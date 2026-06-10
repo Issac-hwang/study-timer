@@ -11,464 +11,420 @@
   <meta name="description" content="집중 20분 · 복기 5분 · 휴식 15분 공부 사이클 타이머" />
   <title>Study Tide</title>
   <link rel="manifest" href="manifest.json" />
-
-  <!-- Apple Touch Icons -->
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png" />
   <link rel="apple-touch-icon" sizes="152x152" href="icon-152.png" />
   <link rel="apple-touch-icon" sizes="120x120" href="icon-120.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-
-  <!-- Splash screens for iOS -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-  <style>
-    html, body, #root {
-      margin: 0; padding: 0; width: 100%; height: 100%; height: 100dvh;
-      background: #0B0E14; overflow: hidden;
-    }
-  </style>
-
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
-
-  <!-- React + Babel (CDN, no build step) -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <!-- lucide-react via CDN -->
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;width:100%;height:100%;background:#0B0E14;overflow:hidden}
+body{
+  position:relative;width:100%;height:100vh;height:100dvh;
+  overflow:hidden;display:flex;flex-direction:column;
+  background:radial-gradient(120% 90% at 50% 0%,#11151F 0%,#0B0E14 62%);
+  color:#F2EFE6;
+  font-family:'IBM Plex Sans KR','Apple SD Gothic Neo',system-ui,sans-serif;
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;
+}
+/* 물 */
+#tide{position:absolute;left:0;right:0;bottom:0;z-index:0;transition:height .55s linear;will-change:height}
+#tide-surface{position:absolute;top:-1px;left:0;right:0;height:2px;background:rgba(242,239,230,.65)}
+#tide-wavewrap{position:absolute;left:0;right:0;top:0;height:24px;transform:translateY(-95%);overflow:hidden;pointer-events:none}
+#tide-wavesvg{display:block;width:200%;height:100%;animation:drift 9s linear infinite}
+@keyframes drift{to{transform:translateX(-50%)}}
+#pulse{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;transition:none}
+#pulse.on{animation:pls .9s ease-out forwards}
+@keyframes pls{from{opacity:.4}to{opacity:0}}
+/* 상단 */
+#top{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:max(18px,env(safe-area-inset-top)) clamp(16px,3vw,28px) 0}
+#mark{display:flex;flex-direction:column;gap:2px}
+#mark b{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:13px;letter-spacing:.34em}
+#mark span{font-size:11px;color:#8B93A7;letter-spacing:.06em}
+#icons{display:flex;gap:8px}
+/* 중앙 */
+#main{position:relative;z-index:2;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,1.6vh,18px);padding:0 16px;text-align:center}
+#eyebrow{display:flex;align-items:center;gap:10px;font-size:clamp(13px,1.8vw,16px);font-weight:500;color:#C9CDD9;letter-spacing:.04em}
+#dot{width:9px;height:9px;border-radius:50%;flex:none}
+#phase-label{font-weight:700;color:#F2EFE6;font-size:clamp(20px,3.2vw,30px);letter-spacing:.02em}
+#clock{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(74px,21vw,220px);line-height:.95;letter-spacing:-0.015em;text-shadow:0 2px 34px rgba(8,10,16,.55);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+#next-line{display:flex;align-items:center;gap:10px;font-size:clamp(13px,1.8vw,16px);color:#B7BCC9}
+#pause-chip{font-size:12px;font-weight:700;letter-spacing:.12em;padding:4px 10px;border-radius:999px;border:1px solid rgba(242,239,230,.3);color:#F2EFE6;display:none}
+/* 하단 */
+#bottom{position:relative;z-index:2;padding:0 clamp(16px,4vw,32px) max(22px,calc(env(safe-area-inset-bottom)+8px));display:flex;flex-direction:column;align-items:center;gap:14px}
+#strip{width:min(920px,100%);height:10px;display:flex;gap:3px}
+#stripmeta{width:min(920px,100%);display:flex;justify-content:space-between;font-size:12px;color:#8B93A7;letter-spacing:.04em}
+#controls{display:flex;align-items:center;gap:clamp(14px,4vw,26px);padding-top:2px}
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid rgba(242,239,230,.16);background:rgba(242,239,230,.07);color:#F2EFE6;cursor:pointer;transition:background .15s,transform .1s;padding:0}
+.btn:hover{background:rgba(242,239,230,.14)}.btn:active{transform:scale(.96)}
+.btn:focus-visible{outline:2px solid #F2EFE6;outline-offset:3px}
+.sm{width:44px;height:44px}.md{width:54px;height:54px}
+#btn-play{width:80px;height:80px;border:none;background:#F2EFE6;color:#0B0E14}
+#btn-play:hover{background:#FFFDF4}
+/* 설정 시트 */
+#scrim{position:fixed;inset:0;z-index:40;background:rgba(5,7,11,.62);backdrop-filter:blur(2px);display:none}
+#sheet{position:fixed;z-index:50;left:50%;bottom:0;transform:translateX(-50%);width:min(560px,100%);max-height:min(88vh,88dvh);overflow-y:auto;background:#12151E;border:1px solid rgba(242,239,230,.1);border-bottom:none;border-radius:22px 22px 0 0;padding:20px 22px calc(24px + env(safe-area-inset-bottom));display:none}
+@media(min-width:640px){#sheet{bottom:auto;top:50%;transform:translate(-50%,-50%);border-radius:22px;border-bottom:1px solid rgba(242,239,230,.1)}}
+#sheet h2{margin:0 0 4px;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.hint{margin:0 0 14px;font-size:12.5px;color:#8B93A7}
+.row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-top:1px solid rgba(242,239,230,.08);gap:12px}
+.lbl{font-size:15px;font-weight:500}.sub{display:block;font-size:12px;color:#8B93A7;margin-top:2px;font-weight:400}
+.step{display:flex;align-items:center;gap:8px}
+.val{min-width:86px;text-align:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.val small{font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;font-weight:500;color:#8B93A7;margin-left:3px}
+.sw{position:relative;width:50px;height:30px;border-radius:999px;border:none;cursor:pointer;transition:background .18s;flex:none}
+.sw .knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#F2EFE6;transition:transform .18s}
+.sw.on .knob{transform:translateX(20px)}
+.sw:focus-visible{outline:2px solid #F2EFE6;outline-offset:3px}
+.foot{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
+.tbtn{border:1px solid rgba(242,239,230,.18);background:transparent;color:#C9CDD9;border-radius:12px;padding:11px 16px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer}
+.tbtn.pri{background:#F2EFE6;color:#0B0E14;border-color:#F2EFE6;font-weight:700}
+.tbtn:focus-visible{outline:2px solid #F2EFE6;outline-offset:3px}
+@media(max-width:460px){#stripmeta span:first-child{display:none}#stripmeta{justify-content:flex-end}}
+@media(prefers-reduced-motion:reduce){#tide-wavesvg{animation:none}#tide{transition:height .2s linear}}
+</style>
 </head>
 <body>
-<div id="root"></div>
 
-<script type="text/babel" data-presets="react">
-const { useState, useRef, useEffect, useCallback, useMemo } = React;
+<div id="tide" aria-hidden="true">
+  <div id="tide-wavewrap">
+    <svg id="tide-wavesvg" viewBox="0 0 2400 32" preserveAspectRatio="none">
+      <path id="wavepath" fill="#4E6EF2"/>
+    </svg>
+  </div>
+  <div id="tide-surface"></div>
+</div>
+<div id="pulse" aria-hidden="true"></div>
 
-/* ── lucide icons (from window.lucide UMD) ── */
-function Icon({ name, size = 20 }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (ref.current && window.lucide) {
-      ref.current.innerHTML = "";
-      const svg = window.lucide.createElement(name);
-      if (svg) {
-        svg.setAttribute("width", size);
-        svg.setAttribute("height", size);
-        svg.setAttribute("stroke", "currentColor");
-        svg.setAttribute("stroke-width", "2");
-        svg.setAttribute("stroke-linecap", "round");
-        svg.setAttribute("stroke-linejoin", "round");
-        svg.setAttribute("fill", "none");
-        ref.current.appendChild(svg);
-      }
-    }
-  }, [name, size]);
-  return React.createElement("span", { ref, style: { display:"inline-flex", alignItems:"center" } });
-}
+<header id="top">
+  <div id="mark">
+    <b>STUDY&nbsp;TIDE</b>
+    <span>20·5·15 집중 사이클</span>
+  </div>
+  <div id="icons">
+    <button class="btn sm" id="btn-sound" aria-label="종료음 끄기">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="icon-sound"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14" id="sound-far"/></svg>
+    </button>
+    <button class="btn sm" id="btn-settings" aria-label="시간 설정">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
 
-/* ── 상수 ── */
-const DEFAULTS = { focus: 20, review: 5, brk: 15, sessions: 3, autoNext: true, sound: true };
+<main id="main">
+  <div id="eyebrow">
+    <span id="dot"></span>
+    <span id="phase-label">집중</span>
+    <span style="opacity:.4">·</span>
+    <span id="session-label">세션 1 / 3</span>
+  </div>
+  <div id="clock" role="timer" aria-label="남은 시간">20:00</div>
+  <div id="next-line">
+    <span id="pause-chip">일시정지</span>
+    <span id="next-text">다음 · 복기 5분</span>
+  </div>
+</main>
 
+<footer id="bottom">
+  <div id="strip" role="img" aria-label="전체 사이클 진행"></div>
+  <div id="stripmeta">
+    <span id="meta-left">집중 20분 + 복기 5분 × 3 → 휴식 15분</span>
+    <span id="meta-right">0 / 90분</span>
+  </div>
+  <div id="controls">
+    <button class="btn md" id="btn-reset" aria-label="처음으로">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.73"/></svg>
+    </button>
+    <button class="btn" id="btn-play" aria-label="시작">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="none" id="icon-play"><polygon points="5 3 19 12 5 21 5 3" style="margin-left:3px"/></svg>
+    </button>
+    <button class="btn md" id="btn-skip" aria-label="다음 단계">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+    </button>
+  </div>
+</footer>
+
+<!-- 설정 시트 -->
+<div id="scrim"></div>
+<div id="sheet" role="dialog" aria-modal="true" aria-label="시간 설정">
+  <h2>시간 설정
+    <button class="btn sm" id="btn-close" aria-label="닫기">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </h2>
+  <p class="hint" id="sheet-hint">변경 즉시 적용돼요.</p>
+  <div class="row" style="border-top:none">
+    <span class="lbl">집중<span class="sub">한 세션의 공부 시간</span></span>
+    <div class="step"><button class="btn sm step-btn" data-key="focus" data-d="-1">−</button><span class="val" id="val-focus">20<small>분</small></span><button class="btn sm step-btn" data-key="focus" data-d="1">+</button></div>
+  </div>
+  <div class="row">
+    <span class="lbl">복기<span class="sub">집중 직후 정리 시간</span></span>
+    <div class="step"><button class="btn sm step-btn" data-key="review" data-d="-1">−</button><span class="val" id="val-review">5<small>분</small></span><button class="btn sm step-btn" data-key="review" data-d="1">+</button></div>
+  </div>
+  <div class="row">
+    <span class="lbl">휴식<span class="sub">사이클 끝의 긴 휴식</span></span>
+    <div class="step"><button class="btn sm step-btn" data-key="brk" data-d="-1">−</button><span class="val" id="val-brk">15<small>분</small></span><button class="btn sm step-btn" data-key="brk" data-d="1">+</button></div>
+  </div>
+  <div class="row">
+    <span class="lbl">세션 수<span class="sub">휴식 전 반복 횟수</span></span>
+    <div class="step"><button class="btn sm step-btn" data-key="sessions" data-d="-1">−</button><span class="val" id="val-sessions">3<small>회</small></span><button class="btn sm step-btn" data-key="sessions" data-d="1">+</button></div>
+  </div>
+  <div class="row">
+    <span class="lbl">자동 진행<span class="sub">단계가 끝나면 바로 다음 시작</span></span>
+    <button class="sw" id="sw-auto" role="switch" aria-checked="true" aria-label="자동 진행"><span class="knob"></span></button>
+  </div>
+  <div class="row">
+    <span class="lbl">종료음<span class="sub">단계가 바뀔 때 알림음</span></span>
+    <button class="sw on" id="sw-sound" role="switch" aria-checked="true" aria-label="종료음"><span class="knob"></span></button>
+  </div>
+  <div class="foot">
+    <button class="tbtn" id="btn-default">기본값 (20·5·15)</button>
+    <button class="tbtn pri" id="btn-done">완료</button>
+  </div>
+</div>
+
+<script>
+// ── 상수 ──
 const PHASES = {
   focus:  { label:"집중", top:"#4E6EF2", deep:"#1B2B85", glow:"rgba(78,110,242,0.45)" },
   review: { label:"복기", top:"#DE8E2C", deep:"#7C400E", glow:"rgba(222,142,44,0.42)" },
   brk:    { label:"휴식", top:"#2CA87E", deep:"#0C513B", glow:"rgba(44,168,126,0.42)" },
 };
+const LIMITS = { focus:[1,120], review:[1,60], brk:[1,60], sessions:[1,8] };
+const DEFAULTS = { focus:20, review:5, brk:15, sessions:3, autoNext:true, sound:true };
 
-const durMs  = (phase, s) => (phase==="focus" ? s.focus : phase==="review" ? s.review : s.brk) * 60000;
-const fmt    = ms => { const t=Math.max(0,Math.round(ms/1000)); const m=Math.floor(t/60); const sc=t%60; return `${String(m).padStart(2,"0")}:${String(sc).padStart(2,"0")}`; };
-const hexA   = (hex, a) => { const n=parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; };
-
+// ── 물결 path ──
 const WAVE_D = (() => {
   let d = "M0 16 Q 50 5 100 16";
-  for (let x=200; x<=2400; x+=100) d += ` T ${x} 16`;
-  return d + " L2400 32 L0 32 Z";
+  for (let x=200;x<=2400;x+=100) d+=` T ${x} 16`;
+  return d+" L2400 32 L0 32 Z";
 })();
+document.getElementById("wavepath").setAttribute("d", WAVE_D);
 
-/* ── CSS ── */
-const CSS = `
-.tide-app,.tide-app *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-.tide-app{position:relative;width:100%;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:radial-gradient(120% 90% at 50% 0%,#11151F 0%,#0B0E14 62%);color:#F2EFE6;font-family:'IBM Plex Sans KR','Apple SD Gothic Neo',system-ui,sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none}
-.tide{position:absolute;left:0;right:0;bottom:0;z-index:0;transition:height .55s linear;will-change:height}
-.tide-surface{position:absolute;top:-1px;left:0;right:0;height:2px;background:rgba(242,239,230,.65)}
-.tide-wavewrap{position:absolute;left:0;right:0;top:0;height:22px;transform:translateY(-95%);overflow:hidden;pointer-events:none}
-.tide-wavesvg{display:block;width:200%;height:100%;animation:tideDrift 9s linear infinite}
-@keyframes tideDrift{to{transform:translateX(-50%)}}
-.tide-pulse{position:absolute;inset:0;z-index:5;pointer-events:none;animation:tidePulse .9s ease-out forwards}
-@keyframes tidePulse{from{opacity:.4}to{opacity:0}}
-.tide-top{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:max(18px,env(safe-area-inset-top)) clamp(16px,3vw,28px) 0}
-.tide-mark{display:flex;flex-direction:column;gap:2px}
-.tide-mark b{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:13px;letter-spacing:.34em}
-.tide-mark span{font-size:11px;color:#8B93A7;letter-spacing:.06em}
-.tide-icons{display:flex;gap:8px}
-.tide-main{position:relative;z-index:2;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,1.6vh,18px);padding:0 16px;text-align:center}
-.tide-eyebrow{display:flex;align-items:center;gap:10px;font-size:clamp(13px,1.8vw,16px);font-weight:500;color:#C9CDD9;letter-spacing:.04em}
-.tide-dot{width:9px;height:9px;border-radius:50%;flex:none}
-.tide-phase{font-weight:700;color:#F2EFE6;font-size:clamp(20px,3.2vw,30px);letter-spacing:.02em}
-.tide-clock{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(74px,21vw,220px);line-height:.95;letter-spacing:-0.015em;text-shadow:0 2px 34px rgba(8,10,16,.55);font-variant-numeric:tabular-nums}
-.tide-clock .dg{display:inline-block;width:.58em;text-align:center}
-.tide-clock .cl{display:inline-block;width:.32em;text-align:center;transform:translateY(-.05em)}
-.tide-next{display:flex;align-items:center;gap:10px;font-size:clamp(13px,1.8vw,16px);color:#B7BCC9}
-.tide-chip{font-size:12px;font-weight:700;letter-spacing:.12em;padding:4px 10px;border-radius:999px;border:1px solid rgba(242,239,230,.3);color:#F2EFE6}
-.tide-bottom{position:relative;z-index:2;padding:0 clamp(16px,4vw,32px) max(22px,calc(env(safe-area-inset-bottom)+8px));display:flex;flex-direction:column;align-items:center;gap:14px}
-.tide-strip{width:min(920px,100%);height:10px;display:flex;gap:3px}
-.tide-seg{position:relative;height:100%;border-radius:6px;overflow:hidden;min-width:4px}
-.tide-segfill{position:absolute;inset:0 auto 0 0;transition:width .3s linear}
-.tide-stripmeta{width:min(920px,100%);display:flex;justify-content:space-between;font-size:12px;color:#8B93A7;letter-spacing:.04em}
-.tide-controls{display:flex;align-items:center;gap:clamp(14px,4vw,26px);padding-top:2px}
-.tide-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid rgba(242,239,230,.16);background:rgba(242,239,230,.07);color:#F2EFE6;cursor:pointer;transition:background .15s ease,transform .1s ease}
-.tide-btn:hover{background:rgba(242,239,230,.14)}
-.tide-btn:active{transform:scale(.96)}
-.tide-btn:focus-visible{outline:2px solid #F2EFE6;outline-offset:3px}
-.tide-btn.sm{width:44px;height:44px}
-.tide-btn.md{width:54px;height:54px}
-.tide-btn.big{width:80px;height:80px;border:none;background:#F2EFE6;color:#0B0E14}
-.tide-btn.big:hover{background:#FFFDF4}
-.tide-btn[disabled]{opacity:.4;cursor:default}
-.tide-scrim{position:fixed;inset:0;z-index:40;background:rgba(5,7,11,.62);backdrop-filter:blur(2px)}
-.tide-sheet{position:fixed;z-index:50;left:50%;bottom:0;transform:translateX(-50%);width:min(560px,100%);max-height:min(88vh,88dvh);overflow-y:auto;background:#12151E;border:1px solid rgba(242,239,230,.1);border-bottom:none;border-radius:22px 22px 0 0;padding:20px 22px calc(24px + env(safe-area-inset-bottom))}
-@media (min-width:640px){.tide-sheet{bottom:auto;top:50%;transform:translate(-50%,-50%);border-radius:22px;border-bottom:1px solid rgba(242,239,230,.1)}}
-.tide-sheet h2{margin:0 0 4px;font-size:18px;font-weight:700;letter-spacing:.02em;display:flex;align-items:center;justify-content:space-between}
-.tide-sheet .hint{margin:0 0 14px;font-size:12.5px;color:#8B93A7}
-.tide-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-top:1px solid rgba(242,239,230,.08);gap:12px}
-.tide-row .lbl{font-size:15px;font-weight:500}
-.tide-row .sub{display:block;font-size:12px;color:#8B93A7;margin-top:2px;font-weight:400}
-.tide-step{display:flex;align-items:center;gap:8px}
-.tide-step .val{min-width:86px;text-align:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
-.tide-step .val small{font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;font-weight:500;color:#8B93A7;margin-left:3px}
-.tide-switch{position:relative;width:50px;height:30px;border-radius:999px;border:none;cursor:pointer;transition:background .18s ease;flex:none}
-.tide-switch .knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#F2EFE6;transition:transform .18s ease}
-.tide-switch.on .knob{transform:translateX(20px)}
-.tide-switch:focus-visible{outline:2px solid #F2EFE6;outline-offset:3px}
-.tide-sheet-foot{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
-.tide-textbtn{border:1px solid rgba(242,239,230,.18);background:transparent;color:#C9CDD9;border-radius:12px;padding:11px 16px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer}
-.tide-textbtn.primary{background:#F2EFE6;color:#0B0E14;border-color:#F2EFE6;font-weight:700}
-.tide-textbtn:focus-visible{outline:2px solid #F2EFE6;outline-offset:3px}
-@media (max-width:460px){.tide-stripmeta span:first-child{display:none}.tide-stripmeta{justify-content:flex-end}}
-@media (prefers-reduced-motion:reduce){.tide-wavesvg{animation:none}.tide-pulse{animation:none;opacity:0}.tide{transition:height .2s linear}.tide-segfill{transition:none}}
-`;
+// ── 상태 ──
+let S = {...DEFAULTS};
+try { const ls=localStorage.getItem("tide2"); if(ls) S={...S,...JSON.parse(ls)}; } catch(e){}
+let phase="focus", sessionNo=1, status="idle";
+let totalMs=S.focus*60000, remainMs=S.focus*60000;
+let endTs=0, tickId=null;
 
-/* ── Stepper ── */
-function Stepper({ value, min, max, suffix, onChange }) {
-  const cb = useRef(null); const timer = useRef(null); const iv = useRef(null);
-  const stop = () => { clearTimeout(timer.current); clearInterval(iv.current); };
-  const begin = (delta) => {
-    cb.current = () => onChange(v => Math.min(max, Math.max(min, v + delta)));
-    cb.current();
-    timer.current = setTimeout(() => { iv.current = setInterval(() => cb.current(), 70); }, 380);
-  };
-  useEffect(() => stop, []);
-  const btn = (delta, iconName, label) => (
-    <button type="button" className="tide-btn sm" aria-label={label}
-      onPointerDown={() => begin(delta)}
-      onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}
-      onClick={e => { if (e.detail===0) onChange(v => Math.min(max, Math.max(min, v+delta))); }}>
-      <Icon name={delta < 0 ? "minus" : "plus"} size={18} />
-    </button>
-  );
-  return (
-    <div className="tide-step">
-      {btn(-1, "minus", "줄이기")}
-      <span className="val">{value}<small>{suffix}</small></span>
-      {btn(+1, "plus", "늘리기")}
-    </div>
-  );
+// ── 오디오 ──
+let ac=null;
+function initAudio(){ try{ if(!ac) ac=new(window.AudioContext||window.webkitAudioContext)(); if(ac.state==="suspended") ac.resume(); }catch(e){} }
+function tone(f,t0,dur,vol=0.1){
+  if(!ac) return;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.type="sine"; o.frequency.value=f; o.connect(g); g.connect(ac.destination);
+    const t=ac.currentTime+t0;
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t); o.stop(t+dur+0.05);
+  }catch(e){}
+}
+function chime(next){
+  if(!S.sound) return; initAudio();
+  if(next==="brk"){tone(523,0,0.5);tone(392,0.18,0.7);}
+  else if(next==="review"){tone(660,0,0.35);tone(880,0.16,0.5);}
+  else{tone(587,0,0.3);tone(740,0.14,0.45);}
 }
 
-function Toggle({ on, onChange, label }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} aria-label={label}
-      className={`tide-switch ${on?"on":""}`}
-      style={{ background: on ? "#4E6EF2" : "rgba(242,239,230,.16)" }}
-      onClick={() => onChange(!on)}>
-      <span className="knob" />
-    </button>
-  );
-}
+// ── Wake Lock ──
+let wl=null;
+async function acquireWL(){ try{ if(navigator.wakeLock) wl=await navigator.wakeLock.request("screen"); }catch(e){} }
+function releaseWL(){ try{wl?.release();}catch(e){} wl=null; }
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&status==="running") acquireWL(); });
 
-/* ── 메인 ── */
-function App() {
-  const [settings, setSettings] = useState(DEFAULTS);
-  const [tm, setTm] = useState(() => ({ phase:"focus", sessionNo:1, status:"idle", total:DEFAULTS.focus*60000, remain:DEFAULTS.focus*60000 }));
-  const [open, setOpen] = useState(false);
-  const [pulse, setPulse] = useState(null);
+// ── 헬퍼 ──
+function fmt(ms){ const t=Math.max(0,Math.round(ms/1000)); return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0"); }
+function hexA(hex,a){ const n=parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
+function saveLS(){ try{localStorage.setItem("tide2",JSON.stringify(S));}catch(e){} }
 
-  const endRef = useRef(0);
-  const tmRef = useRef(tm);     useEffect(() => { tmRef.current = tm; }, [tm]);
-  const setRef = useRef(settings); useEffect(() => { setRef.current = settings; }, [settings]);
-  const openRef = useRef(open); useEffect(() => { openRef.current = open; }, [open]);
-  const acRef = useRef(null);
-  const wakeRef = useRef(null);
-
-  /* 사운드 */
-  const initAudio = () => {
-    try {
-      if (!acRef.current) acRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      if (acRef.current.state === "suspended") acRef.current.resume();
-    } catch(e){}
-  };
-  const tone = (f, t0, dur, vol=0.1) => {
-    const ac = acRef.current; if (!ac) return;
-    try {
-      const o = ac.createOscillator(); const g = ac.createGain();
-      o.type="sine"; o.frequency.value=f; o.connect(g); g.connect(ac.destination);
-      const t = ac.currentTime + t0;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(vol, t+0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
-      o.start(t); o.stop(t+dur+0.05);
-    } catch(e){}
-  };
-  const chime = (next) => {
-    if (!setRef.current.sound) return; initAudio();
-    if (next==="brk") { tone(523,0,0.5); tone(392,0.18,0.7); }
-    else if (next==="review") { tone(660,0,0.35); tone(880,0.16,0.5); }
-    else { tone(587,0,0.3); tone(740,0.14,0.45); }
-  };
-
-  /* Wake Lock */
-  useEffect(() => {
-    const acquire = async () => { try { if (tm.status==="running" && navigator.wakeLock) wakeRef.current = await navigator.wakeLock.request("screen"); } catch(e){} };
-    const release = () => { try { wakeRef.current?.release(); } catch(e){} wakeRef.current=null; };
-    if (tm.status==="running") acquire(); else release();
-    const onVis = () => { if (document.visibilityState==="visible" && tmRef.current.status==="running") acquire(); };
-    document.addEventListener("visibilitychange", onVis);
-    return () => { document.removeEventListener("visibilitychange", onVis); release(); };
-  }, [tm.status]);
-
-  /* 단계 전환 */
-  const advance = useCallback((withSound, autostart) => {
-    const p = tmRef.current; const s = setRef.current;
-    let phase, sess;
-    if (p.phase==="focus") { phase="review"; sess=p.sessionNo; }
-    else if (p.phase==="review") {
-      if (p.sessionNo >= s.sessions) { phase="brk"; sess=p.sessionNo; }
-      else { phase="focus"; sess=p.sessionNo+1; }
-    } else { phase="focus"; sess=1; }
-    const total = durMs(phase, s);
-    if (withSound) chime(phase);
-    setPulse({ key:Date.now(), color:PHASES[phase].glow });
-    if (autostart) { endRef.current = Date.now()+total; setTm({ phase, sessionNo:sess, status:"running", total, remain:total }); }
-    else setTm({ phase, sessionNo:sess, status:"idle", total, remain:total });
-  }, []);
-
-  /* 틱 */
-  useEffect(() => {
-    if (tm.status !== "running") return;
-    const id = setInterval(() => {
-      const r = endRef.current - Date.now();
-      if (r <= 0) advance(true, setRef.current.autoNext);
-      else setTm(p => ({ ...p, remain:r }));
-    }, 250);
-    return () => clearInterval(id);
-  }, [tm.status, tm.phase, tm.sessionNo, advance]);
-
-  /* 조작 */
-  const toggle = useCallback(() => {
-    const p = tmRef.current;
-    if (p.status==="running") { const r=Math.max(0,endRef.current-Date.now()); setTm({...p,status:"paused",remain:r}); }
-    else { initAudio(); endRef.current=Date.now()+p.remain; setTm({...p,status:"running"}); }
-  }, []);
-  const reset = useCallback(() => { const t=durMs("focus",setRef.current); setTm({phase:"focus",sessionNo:1,status:"idle",total:t,remain:t}); }, []);
-  const skip  = useCallback(() => advance(false, tmRef.current.status==="running"), [advance]);
-
-  /* 설정 */
-  const applySettings = useCallback((updater) => {
-    setSettings(prev => {
-      const next = typeof updater==="function" ? updater(prev) : {...prev,...updater};
-      const p = tmRef.current; const patch = {};
-      if (p.status==="idle" && p.remain===p.total) { const t=durMs(p.phase,next); patch.total=t; patch.remain=t; }
-      if (p.sessionNo > next.sessions) patch.sessionNo=next.sessions;
-      if (Object.keys(patch).length) setTm(q => ({...q,...patch}));
-      return next;
-    });
-  }, []);
-
-  /* localStorage 저장 */
-  useEffect(() => {
-    try { const s=localStorage.getItem("tide-settings"); if(s) applySettings(prev=>({...prev,...JSON.parse(s)})); } catch(e){}
-  }, []);
-  useEffect(() => {
-    try { localStorage.setItem("tide-settings", JSON.stringify(settings)); } catch(e){}
-  }, [settings]);
-
-  /* Space 키 */
-  useEffect(() => {
-    const onKey = e => {
-      if (e.code!=="Space"||openRef.current) return;
-      if (e.target&&(e.target.tagName==="BUTTON"||e.target.closest?.("button"))) return;
-      e.preventDefault(); toggle();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [toggle]);
-
-  /* 파생값 */
-  const P = PHASES[tm.phase];
-  const progress = Math.min(1, Math.max(0, 1 - tm.remain/tm.total));
-  const segments = useMemo(() => {
-    const a=[];
-    for (let i=0;i<settings.sessions;i++) { a.push({t:"focus",d:settings.focus}); a.push({t:"review",d:settings.review}); }
-    a.push({t:"brk",d:settings.brk});
-    return a;
-  }, [settings]);
-  const curSeg = tm.phase==="brk" ? segments.length-1 : (tm.sessionNo-1)*2+(tm.phase==="review"?1:0);
-  const cycleTotalMin = settings.sessions*(settings.focus+settings.review)+settings.brk;
-  const elapsedMin = useMemo(() => {
-    let m=0; for(let i=0;i<curSeg;i++) m+=segments[i].d;
-    return m+((tm.total-tm.remain)/60000);
-  }, [segments,curSeg,tm.total,tm.remain]);
-  const nextInfo = useMemo(() => {
-    const s=settings;
-    if (tm.phase==="focus") return `복기 ${s.review}분`;
-    if (tm.phase==="review") return tm.sessionNo>=s.sessions ? `휴식 ${s.brk}분` : `${tm.sessionNo+1}번째 집중 ${s.focus}분`;
-    return `새 사이클 · 집중 ${s.focus}분`;
-  }, [tm.phase, tm.sessionNo, settings]);
-
-  const timeStr = fmt(tm.remain);
-  const running = tm.status==="running";
-
-  return (
-    <div className="tide-app">
-      <style dangerouslySetInnerHTML={{__html:CSS}} />
-
-      {/* 차오르는 물 */}
-      <div className="tide" aria-hidden="true"
-        style={{ height:`${progress*100}%`, background:`linear-gradient(to top,${P.deep},${P.top})`, boxShadow:`0 -18px 70px ${P.glow}` }}>
-        <div className="tide-wavewrap">
-          <svg className="tide-wavesvg" viewBox="0 0 2400 32" preserveAspectRatio="none">
-            <path d={WAVE_D} fill={P.top} />
-          </svg>
-        </div>
-        <div className="tide-surface" />
-      </div>
-
-      {pulse && <div key={pulse.key} className="tide-pulse" style={{background:pulse.color}} aria-hidden="true" />}
-
-      {/* 상단 */}
-      <header className="tide-top">
-        <div className="tide-mark">
-          <b>STUDY\u00A0TIDE</b>
-          <span>20·5·15 집중 사이클</span>
-        </div>
-        <div className="tide-icons">
-          <button type="button" className="tide-btn sm"
-            aria-label={settings.sound?"종료음 끄기":"종료음 켜기"}
-            onClick={() => applySettings(s=>({...s,sound:!s.sound}))}>
-            <Icon name={settings.sound?"volume-2":"volume-x"} size={19} />
-          </button>
-          <button type="button" className="tide-btn sm" aria-label="시간 설정" onClick={() => setOpen(true)}>
-            <Icon name="settings" size={19} />
-          </button>
-        </div>
-      </header>
-
-      {/* 가운데 */}
-      <main className="tide-main">
-        <div className="tide-eyebrow">
-          <span className="tide-dot" style={{background:P.top,boxShadow:`0 0 10px ${P.glow}`}} />
-          <span className="tide-phase">{P.label}</span>
-          <span style={{opacity:0.4}}>·</span>
-          <span>{tm.phase==="brk"?"긴 휴식":`세션 ${tm.sessionNo} / ${settings.sessions}`}</span>
-        </div>
-        <div className="tide-clock" role="timer" aria-label={`${P.label} 남은 시간 ${timeStr}`}>
-          {timeStr.split("").map((ch,i) => ch===":" ? <span key={i} className="cl">:</span> : <span key={i} className="dg">{ch}</span>)}
-        </div>
-        <div className="tide-next">
-          {tm.status==="paused" && <span className="tide-chip">일시정지</span>}
-          <span>다음 · {nextInfo}</span>
-        </div>
-      </main>
-
-      {/* 하단 */}
-      <footer className="tide-bottom">
-        <div className="tide-strip" role="img" aria-label={`전체 사이클 ${Math.round((elapsedMin/cycleTotalMin)*100)}% 진행`}>
-          {segments.map((sg,i) => {
-            const c=PHASES[sg.t]; const w=i<curSeg?100:i===curSeg?progress*100:0;
-            return (
-              <div key={i} className="tide-seg" style={{flexGrow:sg.d,flexBasis:0,background:hexA(c.top,0.16)}}>
-                <div className="tide-segfill" style={{width:`${w}%`,background:c.top}} />
-              </div>
-            );
-          })}
-        </div>
-        <div className="tide-stripmeta">
-          <span>집중 {settings.focus}분 + 복기 {settings.review}분 × {settings.sessions} → 휴식 {settings.brk}분</span>
-          <span>{Math.floor(elapsedMin)} / {cycleTotalMin}분</span>
-        </div>
-        <div className="tide-controls">
-          <button type="button" className="tide-btn md" aria-label="처음으로" onClick={reset}>
-            <Icon name="rotate-ccw" size={21} />
-          </button>
-          <button type="button" className="tide-btn big" aria-label={running?"일시정지":"시작"} onClick={toggle}
-            style={{boxShadow:`0 8px 36px ${P.glow}`}}>
-            {running ? <Icon name="pause" size={32} /> : <Icon name="play" size={32} />}
-          </button>
-          <button type="button" className="tide-btn md" aria-label="다음 단계" onClick={skip}>
-            <Icon name="skip-forward" size={21} />
-          </button>
-        </div>
-      </footer>
-
-      {/* 설정 시트 */}
-      {open && (
-        <>
-          <div className="tide-scrim" onClick={() => setOpen(false)} />
-          <div className="tide-sheet" role="dialog" aria-modal="true" aria-label="시간 설정">
-            <h2>
-              시간 설정
-              <button type="button" className="tide-btn sm" aria-label="닫기" onClick={() => setOpen(false)}>
-                <Icon name="x" size={18} />
-              </button>
-            </h2>
-            <p className="hint">{tm.status==="running"||tm.remain!==tm.total ? "변경한 시간은 다음 단계부터 적용돼요." : "변경 즉시 적용돼요."}</p>
-            <div className="tide-row" style={{borderTop:"none"}}>
-              <span className="lbl">집중<span className="sub">한 세션의 공부 시간</span></span>
-              <Stepper value={settings.focus} min={1} max={120} suffix="분" onChange={f => applySettings(s=>({...s,focus:f(s.focus)}))} />
-            </div>
-            <div className="tide-row">
-              <span className="lbl">복기<span className="sub">집중 직후 정리 시간</span></span>
-              <Stepper value={settings.review} min={1} max={60} suffix="분" onChange={f => applySettings(s=>({...s,review:f(s.review)}))} />
-            </div>
-            <div className="tide-row">
-              <span className="lbl">휴식<span className="sub">사이클 끝의 긴 휴식</span></span>
-              <Stepper value={settings.brk} min={1} max={60} suffix="분" onChange={f => applySettings(s=>({...s,brk:f(s.brk)}))} />
-            </div>
-            <div className="tide-row">
-              <span className="lbl">세션 수<span className="sub">휴식 전 반복 횟수</span></span>
-              <Stepper value={settings.sessions} min={1} max={8} suffix="회" onChange={f => applySettings(s=>({...s,sessions:f(s.sessions)}))} />
-            </div>
-            <div className="tide-row">
-              <span className="lbl">자동 진행<span className="sub">단계가 끝나면 바로 다음 시작</span></span>
-              <Toggle on={settings.autoNext} label="자동 진행" onChange={v => applySettings(s=>({...s,autoNext:v}))} />
-            </div>
-            <div className="tide-row">
-              <span className="lbl">종료음<span className="sub">단계가 바뀔 때 알림음</span></span>
-              <Toggle on={settings.sound} label="종료음" onChange={v => applySettings(s=>({...s,sound:v}))} />
-            </div>
-            <div className="tide-sheet-foot">
-              <button type="button" className="tide-textbtn" onClick={() => applySettings(() => ({...DEFAULTS}))}>기본값 (20·5·15)</button>
-              <button type="button" className="tide-textbtn primary" onClick={() => setOpen(false)}>완료</button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-</script>
-
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch(() => {});
-    });
+// ── 렌더 ──
+function render(){
+  const P=PHASES[phase];
+  // 물
+  const pct=Math.min(1,Math.max(0,1-remainMs/totalMs));
+  const tide=document.getElementById("tide");
+  tide.style.height=pct*100+"%";
+  tide.style.background=`linear-gradient(to top,${P.deep},${P.top})`;
+  tide.style.boxShadow=`0 -18px 70px ${P.glow}`;
+  document.getElementById("wavepath").setAttribute("fill",P.top);
+  // 점·페이즈
+  const dot=document.getElementById("dot");
+  dot.style.background=P.top; dot.style.boxShadow=`0 0 10px ${P.glow}`;
+  document.getElementById("phase-label").textContent=P.label;
+  document.getElementById("session-label").textContent=phase==="brk"?"긴 휴식":`세션 ${sessionNo} / ${S.sessions}`;
+  // 시계
+  document.getElementById("clock").textContent=fmt(remainMs);
+  document.getElementById("clock").setAttribute("aria-label",`${P.label} 남은 시간 ${fmt(remainMs)}`);
+  // 다음
+  let nextTxt;
+  if(phase==="focus") nextTxt=`복기 ${S.review}분`;
+  else if(phase==="review") nextTxt=sessionNo>=S.sessions?`휴식 ${S.brk}분`:`${sessionNo+1}번째 집중 ${S.focus}분`;
+  else nextTxt=`새 사이클 · 집중 ${S.focus}분`;
+  document.getElementById("next-text").textContent="다음 · "+nextTxt;
+  document.getElementById("pause-chip").style.display=status==="paused"?"inline-flex":"none";
+  // 플레이 버튼
+  const iconPlay=document.getElementById("icon-play");
+  if(status==="running"){
+    iconPlay.innerHTML='<rect x="6" y="4" width="4" height="16" fill="currentColor"/><rect x="14" y="4" width="4" height="16" fill="currentColor"/>';
+    document.getElementById("btn-play").setAttribute("aria-label","일시정지");
+  } else {
+    iconPlay.innerHTML='<polygon points="5 3 19 12 5 21 5 3" style="margin-left:3px"/>';
+    document.getElementById("btn-play").setAttribute("aria-label","시작");
   }
+  document.getElementById("btn-play").style.boxShadow=`0 8px 36px ${P.glow}`;
+  // 스트립
+  renderStrip();
+  // 메타
+  const cycleMin=S.sessions*(S.focus+S.review)+S.brk;
+  let segs=[];
+  for(let i=0;i<S.sessions;i++){segs.push({t:"focus",d:S.focus});segs.push({t:"review",d:S.review});}
+  segs.push({t:"brk",d:S.brk});
+  const curSeg=phase==="brk"?segs.length-1:(sessionNo-1)*2+(phase==="review"?1:0);
+  let elapsed=0; for(let i=0;i<curSeg;i++) elapsed+=segs[i].d;
+  elapsed+=(totalMs-remainMs)/60000;
+  document.getElementById("meta-left").textContent=`집중 ${S.focus}분 + 복기 ${S.review}분 × ${S.sessions} → 휴식 ${S.brk}분`;
+  document.getElementById("meta-right").textContent=`${Math.floor(elapsed)} / ${cycleMin}분`;
+  // 설정 값
+  ["focus","review","brk","sessions"].forEach(k=>{
+    const el=document.getElementById("val-"+k);
+    const unit=k==="sessions"?"회":"분";
+    el.innerHTML=S[k]+`<small>${unit}</small>`;
+  });
+  document.getElementById("sw-auto").className="sw"+(S.autoNext?" on":"");
+  document.getElementById("sw-auto").setAttribute("aria-checked",S.autoNext);
+  document.getElementById("sw-sound").className="sw"+(S.sound?" on":"");
+  document.getElementById("sw-sound").setAttribute("aria-checked",S.sound);
+  // 사운드 아이콘
+  const si=document.getElementById("icon-sound");
+  const farPath=document.getElementById("sound-far");
+  if(S.sound){ si.style.opacity="1"; if(farPath) farPath.style.display=""; }
+  else { si.style.opacity=".45"; if(farPath) farPath.style.display="none"; }
+  // 힌트
+  document.getElementById("sheet-hint").textContent=(status==="running"||remainMs!==totalMs)?"변경한 시간은 다음 단계부터 적용돼요.":"변경 즉시 적용돼요.";
+}
+
+function renderStrip(){
+  const strip=document.getElementById("strip");
+  strip.innerHTML="";
+  let segs=[];
+  for(let i=0;i<S.sessions;i++){segs.push({t:"focus",d:S.focus});segs.push({t:"review",d:S.review});}
+  segs.push({t:"brk",d:S.brk});
+  const curSeg=phase==="brk"?segs.length-1:(sessionNo-1)*2+(phase==="review"?1:0);
+  const pct=Math.min(1,Math.max(0,1-remainMs/totalMs));
+  segs.forEach((sg,i)=>{
+    const P2=PHASES[sg.t];
+    const div=document.createElement("div");
+    div.style.cssText=`position:relative;height:100%;border-radius:6px;overflow:hidden;min-width:4px;flex-grow:${sg.d};flex-basis:0;background:${hexA(P2.top,0.16)}`;
+    const fill=document.createElement("div");
+    const w=i<curSeg?100:i===curSeg?pct*100:0;
+    fill.style.cssText=`position:absolute;inset:0 auto 0 0;width:${w}%;background:${P2.top};transition:width .3s linear`;
+    div.appendChild(fill); strip.appendChild(div);
+  });
+}
+
+// ── 단계 전환 ──
+function advance(withSound, autostart){
+  let np, ns;
+  if(phase==="focus"){np="review";ns=sessionNo;}
+  else if(phase==="review"){
+    if(sessionNo>=S.sessions){np="brk";ns=sessionNo;}
+    else{np="focus";ns=sessionNo+1;}
+  } else {np="focus";ns=1;}
+  phase=np; sessionNo=ns;
+  totalMs=remainMs=(np==="focus"?S.focus:np==="review"?S.review:S.brk)*60000;
+  if(withSound) chime(np);
+  // 펄스
+  const pulse=document.getElementById("pulse");
+  pulse.style.background=PHASES[np].glow;
+  pulse.className=""; void pulse.offsetWidth; pulse.className="on";
+  if(autostart){ status="running"; endTs=Date.now()+totalMs; startTick(); }
+  else { status="idle"; stopTick(); }
+  render();
+}
+
+// ── 틱 ──
+function startTick(){
+  stopTick();
+  tickId=setInterval(()=>{
+    const r=endTs-Date.now();
+    if(r<=0){ advance(true,S.autoNext); }
+    else{ remainMs=r; render(); }
+  },250);
+}
+function stopTick(){ if(tickId){clearInterval(tickId);tickId=null;} }
+
+// ── 이벤트 ──
+document.getElementById("btn-play").addEventListener("click",()=>{
+  if(status==="running"){ remainMs=Math.max(0,endTs-Date.now()); status="paused"; stopTick(); releaseWL(); }
+  else{ initAudio(); status="running"; endTs=Date.now()+remainMs; startTick(); acquireWL(); }
+  render();
+});
+document.getElementById("btn-reset").addEventListener("click",()=>{
+  stopTick(); releaseWL(); status="idle"; phase="focus"; sessionNo=1;
+  totalMs=remainMs=S.focus*60000; render();
+});
+document.getElementById("btn-skip").addEventListener("click",()=>{
+  advance(false, status==="running");
+});
+document.getElementById("btn-settings").addEventListener("click",()=>{
+  document.getElementById("scrim").style.display="block";
+  document.getElementById("sheet").style.display="block";
+  render();
+});
+function closeSheet(){
+  document.getElementById("scrim").style.display="none";
+  document.getElementById("sheet").style.display="none";
+}
+document.getElementById("btn-close").addEventListener("click",closeSheet);
+document.getElementById("btn-done").addEventListener("click",closeSheet);
+document.getElementById("scrim").addEventListener("click",closeSheet);
+document.getElementById("btn-default").addEventListener("click",()=>{
+  S={...DEFAULTS}; saveLS();
+  if(status==="idle"&&remainMs===totalMs){ totalMs=remainMs=S.focus*60000; }
+  render();
+});
+// 스텝 버튼
+document.querySelectorAll(".step-btn").forEach(btn=>{
+  let hold=null,iv=null;
+  const apply=()=>{
+    const k=btn.dataset.key, d=parseInt(btn.dataset.d);
+    const [mn,mx]=LIMITS[k];
+    S[k]=Math.min(mx,Math.max(mn,S[k]+d));
+    if(status==="idle"&&remainMs===totalMs&&k!=="sessions"){
+      if(k===phase.replace("brk","brk")||(phase==="focus"&&k==="focus")||(phase==="review"&&k==="review")||(phase==="brk"&&k==="brk")){
+        totalMs=remainMs=S[k]*60000;
+      }
+    }
+    saveLS(); render();
+  };
+  btn.addEventListener("pointerdown",()=>{ apply(); hold=setTimeout(()=>{ iv=setInterval(apply,70); },380); });
+  const stop=()=>{ clearTimeout(hold); clearInterval(iv); };
+  btn.addEventListener("pointerup",stop); btn.addEventListener("pointerleave",stop); btn.addEventListener("pointercancel",stop);
+});
+// 스위치
+document.getElementById("sw-auto").addEventListener("click",()=>{ S.autoNext=!S.autoNext; saveLS(); render(); });
+document.getElementById("sw-sound").addEventListener("click",()=>{ S.sound=!S.sound; saveLS(); render(); });
+document.getElementById("btn-sound").addEventListener("click",()=>{ S.sound=!S.sound; saveLS(); render(); });
+// Space
+document.addEventListener("keydown",e=>{
+  if(e.code!=="Space"||document.getElementById("sheet").style.display==="block") return;
+  if(e.target&&(e.target.tagName==="BUTTON")) return;
+  e.preventDefault();
+  document.getElementById("btn-play").click();
+});
+
+// ── 첫 렌더 ──
+render();
+
+// ── 서비스 워커 ──
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
 </script>
 </body>
 </html>
