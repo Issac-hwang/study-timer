@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0B0E14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Study Tide" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="description" content="집중 20분 · 복기 5분 · 휴식 15분 공부 사이클 타이머" />
+  <title>Study Tide</title>
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="icon-152.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="icon-120.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+
+  <!-- Splash screens for iOS -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <style>
+    html, body, #root {
+      margin: 0; padding: 0; width: 100%; height: 100%; height: 100dvh;
+      background: #0B0E14; overflow: hidden;
+    }
+  </style>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- React + Babel (CDN, no build step) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- lucide-react via CDN -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useEffect, useCallback, useMemo } = React;
+
+/* ── lucide icons (from window.lucide UMD) ── */
+function Icon({ name, size = 20 }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current && window.lucide) {
+      ref.current.innerHTML = "";
+      const svg = window.lucide.createElement(name);
+      if (svg) {
+        svg.setAttribute("width", size);
+        svg.setAttribute("height", size);
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("stroke-width", "2");
+        svg.setAttribute("stroke-linecap", "round");
+        svg.setAttribute("stroke-linejoin", "round");
+        svg.setAttribute("fill", "none");
+        ref.current.appendChild(svg);
+      }
+    }
+  }, [name, size]);
+  return React.createElement("span", { ref, style: { display:"inline-flex", alignItems:"center" } });
+}
+
+/* ── 상수 ── */
+const DEFAULTS = { focus: 20, review: 5, brk: 15, sessions: 3, autoNext: true, sound: true };
+
+const PHASES = {
+  focus:  { label:"집중", top:"#4E6EF2", deep:"#1B2B85", glow:"rgba(78,110,242,0.45)" },
+  review: { label:"복기", top:"#DE8E2C", deep:"#7C400E", glow:"rgba(222,142,44,0.42)" },
+  brk:    { label:"휴식", top:"#2CA87E", deep:"#0C513B", glow:"rgba(44,168,126,0.42)" },
+};
+
+const durMs  = (phase, s) => (phase==="focus" ? s.focus : phase==="review" ? s.review : s.brk) * 60000;
+const fmt    = ms => { const t=Math.max(0,Math.round(ms/1000)); const m=Math.floor(t/60); const sc=t%60; return `${String(m).padStart(2,"0")}:${String(sc).padStart(2,"0")}`; };
+const hexA   = (hex, a) => { const n=parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; };
+
+const WAVE_D = (() => {
+  let d = "M0 16 Q 50 5 100 16";
+  for (let x=200; x<=2400; x+=100) d += ` T ${x} 16`;
+  return d + " L2400 32 L0 32 Z";
+})();
+
+/* ── CSS ── */
+const CSS = `
+.tide-app,.tide-app *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+.tide-app{position:relative;width:100%;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:radial-gradient(120% 90% at 50% 0%,#11151F 0%,#0B0E14 62%);color:#F2EFE6;font-family:'IBM Plex Sans KR','Apple SD Gothic Neo',system-ui,sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.tide{position:absolute;left:0;right:0;bottom:0;z-index:0;transition:height .55s linear;will-change:height}
+.tide-surface{position:absolute;top:-1px;left:0;right:0;height:2px;background:rgba(242,239,230,.65)}
+.tide-wavewrap{position:absolute;left:0;right:0;top:0;height:22px;transform:translateY(-95%);overflow:hidden;pointer-events:none}
+.tide-wavesvg{display:block;width:200%;height:100%;animation:tideDrift 9s linear infinite}
+@keyframes tideDrift{to{transform:translateX(-50%)}}
+.tide-pulse{position:absolute;inset:0;z-index:5;pointer-events:none;animation:tidePulse .9s ease-out forwards}
+@keyframes tidePulse{from{opacity:.4}to{opacity:0}}
+.tide-top{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:max(18px,env(safe-area-inset-top)) clamp(16px,3vw,28px) 0}
+.tide-mark{display:flex;flex-direction:column;gap:2px}
+.tide-mark b{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:13px;letter-spacing:.34em}
+.tide-mark span{font-size:11px;color:#8B93A7;letter-spacing:.06em}
+.tide-icons{display:flex;gap:8px}
+.tide-main{position:relative;z-index:2;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,1.6vh,18px);padding:0 16px;text-align:center}
+.tide-eyebrow{display:flex;align-items:center;gap:10px;font-size:clamp(13px,1.8vw,16px);font-weight:500;color:#C9CDD9;letter-spacing:.04em}
+.tide-dot{width:9px;height:9px;border-radius:50%;flex:none}
+.tide-phase{font-weight:700;color:#F2EFE6;font-size:clamp(20px,3.2vw,30px);letter-spacing:.02em}
+.tide-clock{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;font-size:clamp(74px,21vw,220px);line-height:.95;letter-spacing:-0.015em;text-shadow:0 2px 34px rgba(8,10,16,.55);font-variant-numeric:tabular-nums}
+.tide-clock .dg{display:inline-block;width:.58em;text-align:center}
+.tide-clock .cl{display:inline-block;width:.32em;text-align:center;transform:translateY(-.05em)}
+.tide-next{display:flex;align-items:center;gap:10px;font-size:clamp(13px,1.8vw,16px);color:#B7BCC9}
+.tide-chip{font-size:12px;font-weight:700;letter-spacing:.12em;padding:4px 10px;border-radius:999px;border:1px solid rgba(242,239,230,.3);color:#F2EFE6}
+.tide-bottom{position:relative;z-index:2;padding:0 clamp(16px,4vw,32px) max(22px,calc(env(safe-area-inset-bottom)+8px));display:flex;flex-direction:column;align-items:center;gap:14px}
+.tide-strip{width:min(920px,100%);height:10px;display:flex;gap:3px}
+.tide-seg{position:relative;height:100%;border-radius:6px;overflow:hidden;min-width:4px}
+.tide-segfill{position:absolute;inset:0 auto 0 0;transition:width .3s linear}
+.tide-stripmeta{width:min(920px,100%);display:flex;justify-content:space-between;font-size:12px;color:#8B93A7;letter-spacing:.04em}
+.tide-controls{display:flex;align-items:center;gap:clamp(14px,4vw,26px);padding-top:2px}
+.tide-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid rgba(242,239,230,.16);background:rgba(242,239,230,.07);color:#F2EFE6;cursor:pointer;transition:background .15s ease,transform .1s ease}
+.tide-btn:hover{background:rgba(242,239,230,.14)}
+.tide-btn:active{transform:scale(.96)}
+.tide-btn:focus-visible{outline:2px solid #F2EFE6;outline-offset:3px}
+.tide-btn.sm{width:44px;height:44px}
+.tide-btn.md{width:54px;height:54px}
+.tide-btn.big{width:80px;height:80px;border:none;background:#F2EFE6;color:#0B0E14}
+.tide-btn.big:hover{background:#FFFDF4}
+.tide-btn[disabled]{opacity:.4;cursor:default}
+.tide-scrim{position:fixed;inset:0;z-index:40;background:rgba(5,7,11,.62);backdrop-filter:blur(2px)}
+.tide-sheet{position:fixed;z-index:50;left:50%;bottom:0;transform:translateX(-50%);width:min(560px,100%);max-height:min(88vh,88dvh);overflow-y:auto;background:#12151E;border:1px solid rgba(242,239,230,.1);border-bottom:none;border-radius:22px 22px 0 0;padding:20px 22px calc(24px + env(safe-area-inset-bottom))}
+@media (min-width:640px){.tide-sheet{bottom:auto;top:50%;transform:translate(-50%,-50%);border-radius:22px;border-bottom:1px solid rgba(242,239,230,.1)}}
+.tide-sheet h2{margin:0 0 4px;font-size:18px;font-weight:700;letter-spacing:.02em;display:flex;align-items:center;justify-content:space-between}
+.tide-sheet .hint{margin:0 0 14px;font-size:12.5px;color:#8B93A7}
+.tide-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-top:1px solid rgba(242,239,230,.08);gap:12px}
+.tide-row .lbl{font-size:15px;font-weight:500}
+.tide-row .sub{display:block;font-size:12px;color:#8B93A7;margin-top:2px;font-weight:400}
+.tide-step{display:flex;align-items:center;gap:8px}
+.tide-step .val{min-width:86px;text-align:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.tide-step .val small{font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;font-weight:500;color:#8B93A7;margin-left:3px}
+.tide-switch{position:relative;width:50px;height:30px;border-radius:999px;border:none;cursor:pointer;transition:background .18s ease;flex:none}
+.tide-switch .knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#F2EFE6;transition:transform .18s ease}
+.tide-switch.on .knob{transform:translateX(20px)}
+.tide-switch:focus-visible{outline:2px solid #F2EFE6;outline-offset:3px}
+.tide-sheet-foot{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
+.tide-textbtn{border:1px solid rgba(242,239,230,.18);background:transparent;color:#C9CDD9;border-radius:12px;padding:11px 16px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer}
+.tide-textbtn.primary{background:#F2EFE6;color:#0B0E14;border-color:#F2EFE6;font-weight:700}
+.tide-textbtn:focus-visible{outline:2px solid #F2EFE6;outline-offset:3px}
+@media (max-width:460px){.tide-stripmeta span:first-child{display:none}.tide-stripmeta{justify-content:flex-end}}
+@media (prefers-reduced-motion:reduce){.tide-wavesvg{animation:none}.tide-pulse{animation:none;opacity:0}.tide{transition:height .2s linear}.tide-segfill{transition:none}}
+`;
+
+/* ── Stepper ── */
+function Stepper({ value, min, max, suffix, onChange }) {
+  const cb = useRef(null); const timer = useRef(null); const iv = useRef(null);
+  const stop = () => { clearTimeout(timer.current); clearInterval(iv.current); };
+  const begin = (delta) => {
+    cb.current = () => onChange(v => Math.min(max, Math.max(min, v + delta)));
+    cb.current();
+    timer.current = setTimeout(() => { iv.current = setInterval(() => cb.current(), 70); }, 380);
+  };
+  useEffect(() => stop, []);
+  const btn = (delta, iconName, label) => (
+    <button type="button" className="tide-btn sm" aria-label={label}
+      onPointerDown={() => begin(delta)}
+      onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}
+      onClick={e => { if (e.detail===0) onChange(v => Math.min(max, Math.max(min, v+delta))); }}>
+      <Icon name={delta < 0 ? "minus" : "plus"} size={18} />
+    </button>
+  );
+  return (
+    <div className="tide-step">
+      {btn(-1, "minus", "줄이기")}
+      <span className="val">{value}<small>{suffix}</small></span>
+      {btn(+1, "plus", "늘리기")}
+    </div>
+  );
+}
+
+function Toggle({ on, onChange, label }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label}
+      className={`tide-switch ${on?"on":""}`}
+      style={{ background: on ? "#4E6EF2" : "rgba(242,239,230,.16)" }}
+      onClick={() => onChange(!on)}>
+      <span className="knob" />
+    </button>
+  );
+}
+
+/* ── 메인 ── */
+function App() {
+  const [settings, setSettings] = useState(DEFAULTS);
+  const [tm, setTm] = useState(() => ({ phase:"focus", sessionNo:1, status:"idle", total:DEFAULTS.focus*60000, remain:DEFAULTS.focus*60000 }));
+  const [open, setOpen] = useState(false);
+  const [pulse, setPulse] = useState(null);
+
+  const endRef = useRef(0);
+  const tmRef = useRef(tm);     useEffect(() => { tmRef.current = tm; }, [tm]);
+  const setRef = useRef(settings); useEffect(() => { setRef.current = settings; }, [settings]);
+  const openRef = useRef(open); useEffect(() => { openRef.current = open; }, [open]);
+  const acRef = useRef(null);
+  const wakeRef = useRef(null);
+
+  /* 사운드 */
+  const initAudio = () => {
+    try {
+      if (!acRef.current) acRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      if (acRef.current.state === "suspended") acRef.current.resume();
+    } catch(e){}
+  };
+  const tone = (f, t0, dur, vol=0.1) => {
+    const ac = acRef.current; if (!ac) return;
+    try {
+      const o = ac.createOscillator(); const g = ac.createGain();
+      o.type="sine"; o.frequency.value=f; o.connect(g); g.connect(ac.destination);
+      const t = ac.currentTime + t0;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      o.start(t); o.stop(t+dur+0.05);
+    } catch(e){}
+  };
+  const chime = (next) => {
+    if (!setRef.current.sound) return; initAudio();
+    if (next==="brk") { tone(523,0,0.5); tone(392,0.18,0.7); }
+    else if (next==="review") { tone(660,0,0.35); tone(880,0.16,0.5); }
+    else { tone(587,0,0.3); tone(740,0.14,0.45); }
+  };
+
+  /* Wake Lock */
+  useEffect(() => {
+    const acquire = async () => { try { if (tm.status==="running" && navigator.wakeLock) wakeRef.current = await navigator.wakeLock.request("screen"); } catch(e){} };
+    const release = () => { try { wakeRef.current?.release(); } catch(e){} wakeRef.current=null; };
+    if (tm.status==="running") acquire(); else release();
+    const onVis = () => { if (document.visibilityState==="visible" && tmRef.current.status==="running") acquire(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { document.removeEventListener("visibilitychange", onVis); release(); };
+  }, [tm.status]);
+
+  /* 단계 전환 */
+  const advance = useCallback((withSound, autostart) => {
+    const p = tmRef.current; const s = setRef.current;
+    let phase, sess;
+    if (p.phase==="focus") { phase="review"; sess=p.sessionNo; }
+    else if (p.phase==="review") {
+      if (p.sessionNo >= s.sessions) { phase="brk"; sess=p.sessionNo; }
+      else { phase="focus"; sess=p.sessionNo+1; }
+    } else { phase="focus"; sess=1; }
+    const total = durMs(phase, s);
+    if (withSound) chime(phase);
+    setPulse({ key:Date.now(), color:PHASES[phase].glow });
+    if (autostart) { endRef.current = Date.now()+total; setTm({ phase, sessionNo:sess, status:"running", total, remain:total }); }
+    else setTm({ phase, sessionNo:sess, status:"idle", total, remain:total });
+  }, []);
+
+  /* 틱 */
+  useEffect(() => {
+    if (tm.status !== "running") return;
+    const id = setInterval(() => {
+      const r = endRef.current - Date.now();
+      if (r <= 0) advance(true, setRef.current.autoNext);
+      else setTm(p => ({ ...p, remain:r }));
+    }, 250);
+    return () => clearInterval(id);
+  }, [tm.status, tm.phase, tm.sessionNo, advance]);
+
+  /* 조작 */
+  const toggle = useCallback(() => {
+    const p = tmRef.current;
+    if (p.status==="running") { const r=Math.max(0,endRef.current-Date.now()); setTm({...p,status:"paused",remain:r}); }
+    else { initAudio(); endRef.current=Date.now()+p.remain; setTm({...p,status:"running"}); }
+  }, []);
+  const reset = useCallback(() => { const t=durMs("focus",setRef.current); setTm({phase:"focus",sessionNo:1,status:"idle",total:t,remain:t}); }, []);
+  const skip  = useCallback(() => advance(false, tmRef.current.status==="running"), [advance]);
+
+  /* 설정 */
+  const applySettings = useCallback((updater) => {
+    setSettings(prev => {
+      const next = typeof updater==="function" ? updater(prev) : {...prev,...updater};
+      const p = tmRef.current; const patch = {};
+      if (p.status==="idle" && p.remain===p.total) { const t=durMs(p.phase,next); patch.total=t; patch.remain=t; }
+      if (p.sessionNo > next.sessions) patch.sessionNo=next.sessions;
+      if (Object.keys(patch).length) setTm(q => ({...q,...patch}));
+      return next;
+    });
+  }, []);
+
+  /* localStorage 저장 */
+  useEffect(() => {
+    try { const s=localStorage.getItem("tide-settings"); if(s) applySettings(prev=>({...prev,...JSON.parse(s)})); } catch(e){}
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem("tide-settings", JSON.stringify(settings)); } catch(e){}
+  }, [settings]);
+
+  /* Space 키 */
+  useEffect(() => {
+    const onKey = e => {
+      if (e.code!=="Space"||openRef.current) return;
+      if (e.target&&(e.target.tagName==="BUTTON"||e.target.closest?.("button"))) return;
+      e.preventDefault(); toggle();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggle]);
+
+  /* 파생값 */
+  const P = PHASES[tm.phase];
+  const progress = Math.min(1, Math.max(0, 1 - tm.remain/tm.total));
+  const segments = useMemo(() => {
+    const a=[];
+    for (let i=0;i<settings.sessions;i++) { a.push({t:"focus",d:settings.focus}); a.push({t:"review",d:settings.review}); }
+    a.push({t:"brk",d:settings.brk});
+    return a;
+  }, [settings]);
+  const curSeg = tm.phase==="brk" ? segments.length-1 : (tm.sessionNo-1)*2+(tm.phase==="review"?1:0);
+  const cycleTotalMin = settings.sessions*(settings.focus+settings.review)+settings.brk;
+  const elapsedMin = useMemo(() => {
+    let m=0; for(let i=0;i<curSeg;i++) m+=segments[i].d;
+    return m+((tm.total-tm.remain)/60000);
+  }, [segments,curSeg,tm.total,tm.remain]);
+  const nextInfo = useMemo(() => {
+    const s=settings;
+    if (tm.phase==="focus") return `복기 ${s.review}분`;
+    if (tm.phase==="review") return tm.sessionNo>=s.sessions ? `휴식 ${s.brk}분` : `${tm.sessionNo+1}번째 집중 ${s.focus}분`;
+    return `새 사이클 · 집중 ${s.focus}분`;
+  }, [tm.phase, tm.sessionNo, settings]);
+
+  const timeStr = fmt(tm.remain);
+  const running = tm.status==="running";
+
+  return (
+    <div className="tide-app">
+      <style dangerouslySetInnerHTML={{__html:CSS}} />
+
+      {/* 차오르는 물 */}
+      <div className="tide" aria-hidden="true"
+        style={{ height:`${progress*100}%`, background:`linear-gradient(to top,${P.deep},${P.top})`, boxShadow:`0 -18px 70px ${P.glow}` }}>
+        <div className="tide-wavewrap">
+          <svg className="tide-wavesvg" viewBox="0 0 2400 32" preserveAspectRatio="none">
+            <path d={WAVE_D} fill={P.top} />
+          </svg>
+        </div>
+        <div className="tide-surface" />
+      </div>
+
+      {pulse && <div key={pulse.key} className="tide-pulse" style={{background:pulse.color}} aria-hidden="true" />}
+
+      {/* 상단 */}
+      <header className="tide-top">
+        <div className="tide-mark">
+          <b>STUDY\u00A0TIDE</b>
+          <span>20·5·15 집중 사이클</span>
+        </div>
+        <div className="tide-icons">
+          <button type="button" className="tide-btn sm"
+            aria-label={settings.sound?"종료음 끄기":"종료음 켜기"}
+            onClick={() => applySettings(s=>({...s,sound:!s.sound}))}>
+            <Icon name={settings.sound?"volume-2":"volume-x"} size={19} />
+          </button>
+          <button type="button" className="tide-btn sm" aria-label="시간 설정" onClick={() => setOpen(true)}>
+            <Icon name="settings" size={19} />
+          </button>
+        </div>
+      </header>
+
+      {/* 가운데 */}
+      <main className="tide-main">
+        <div className="tide-eyebrow">
+          <span className="tide-dot" style={{background:P.top,boxShadow:`0 0 10px ${P.glow}`}} />
+          <span className="tide-phase">{P.label}</span>
+          <span style={{opacity:0.4}}>·</span>
+          <span>{tm.phase==="brk"?"긴 휴식":`세션 ${tm.sessionNo} / ${settings.sessions}`}</span>
+        </div>
+        <div className="tide-clock" role="timer" aria-label={`${P.label} 남은 시간 ${timeStr}`}>
+          {timeStr.split("").map((ch,i) => ch===":" ? <span key={i} className="cl">:</span> : <span key={i} className="dg">{ch}</span>)}
+        </div>
+        <div className="tide-next">
+          {tm.status==="paused" && <span className="tide-chip">일시정지</span>}
+          <span>다음 · {nextInfo}</span>
+        </div>
+      </main>
+
+      {/* 하단 */}
+      <footer className="tide-bottom">
+        <div className="tide-strip" role="img" aria-label={`전체 사이클 ${Math.round((elapsedMin/cycleTotalMin)*100)}% 진행`}>
+          {segments.map((sg,i) => {
+            const c=PHASES[sg.t]; const w=i<curSeg?100:i===curSeg?progress*100:0;
+            return (
+              <div key={i} className="tide-seg" style={{flexGrow:sg.d,flexBasis:0,background:hexA(c.top,0.16)}}>
+                <div className="tide-segfill" style={{width:`${w}%`,background:c.top}} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="tide-stripmeta">
+          <span>집중 {settings.focus}분 + 복기 {settings.review}분 × {settings.sessions} → 휴식 {settings.brk}분</span>
+          <span>{Math.floor(elapsedMin)} / {cycleTotalMin}분</span>
+        </div>
+        <div className="tide-controls">
+          <button type="button" className="tide-btn md" aria-label="처음으로" onClick={reset}>
+            <Icon name="rotate-ccw" size={21} />
+          </button>
+          <button type="button" className="tide-btn big" aria-label={running?"일시정지":"시작"} onClick={toggle}
+            style={{boxShadow:`0 8px 36px ${P.glow}`}}>
+            {running ? <Icon name="pause" size={32} /> : <Icon name="play" size={32} />}
+          </button>
+          <button type="button" className="tide-btn md" aria-label="다음 단계" onClick={skip}>
+            <Icon name="skip-forward" size={21} />
+          </button>
+        </div>
+      </footer>
+
+      {/* 설정 시트 */}
+      {open && (
+        <>
+          <div className="tide-scrim" onClick={() => setOpen(false)} />
+          <div className="tide-sheet" role="dialog" aria-modal="true" aria-label="시간 설정">
+            <h2>
+              시간 설정
+              <button type="button" className="tide-btn sm" aria-label="닫기" onClick={() => setOpen(false)}>
+                <Icon name="x" size={18} />
+              </button>
+            </h2>
+            <p className="hint">{tm.status==="running"||tm.remain!==tm.total ? "변경한 시간은 다음 단계부터 적용돼요." : "변경 즉시 적용돼요."}</p>
+            <div className="tide-row" style={{borderTop:"none"}}>
+              <span className="lbl">집중<span className="sub">한 세션의 공부 시간</span></span>
+              <Stepper value={settings.focus} min={1} max={120} suffix="분" onChange={f => applySettings(s=>({...s,focus:f(s.focus)}))} />
+            </div>
+            <div className="tide-row">
+              <span className="lbl">복기<span className="sub">집중 직후 정리 시간</span></span>
+              <Stepper value={settings.review} min={1} max={60} suffix="분" onChange={f => applySettings(s=>({...s,review:f(s.review)}))} />
+            </div>
+            <div className="tide-row">
+              <span className="lbl">휴식<span className="sub">사이클 끝의 긴 휴식</span></span>
+              <Stepper value={settings.brk} min={1} max={60} suffix="분" onChange={f => applySettings(s=>({...s,brk:f(s.brk)}))} />
+            </div>
+            <div className="tide-row">
+              <span className="lbl">세션 수<span className="sub">휴식 전 반복 횟수</span></span>
+              <Stepper value={settings.sessions} min={1} max={8} suffix="회" onChange={f => applySettings(s=>({...s,sessions:f(s.sessions)}))} />
+            </div>
+            <div className="tide-row">
+              <span className="lbl">자동 진행<span className="sub">단계가 끝나면 바로 다음 시작</span></span>
+              <Toggle on={settings.autoNext} label="자동 진행" onChange={v => applySettings(s=>({...s,autoNext:v}))} />
+            </div>
+            <div className="tide-row">
+              <span className="lbl">종료음<span className="sub">단계가 바뀔 때 알림음</span></span>
+              <Toggle on={settings.sound} label="종료음" onChange={v => applySettings(s=>({...s,sound:v}))} />
+            </div>
+            <div className="tide-sheet-foot">
+              <button type="button" className="tide-textbtn" onClick={() => applySettings(() => ({...DEFAULTS}))}>기본값 (20·5·15)</button>
+              <button type="button" className="tide-textbtn primary" onClick={() => setOpen(false)}>완료</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
